@@ -7,8 +7,25 @@ const mockCreateAccount = async (accountData) => {
     return { id: `acc_${Date.now()}`, ...accountData, balance: 0 };
 };
 
+// Load C++ addon (with mock fallback if not built)
+let cppEngine;
+try {
+    cppEngine = require('../build/Release/ledger_core');
+} catch (e) {
+    console.warn('[Warning] C++ addon not built. Using JS fallback.');
+    cppEngine = {
+        processTransaction: (accountId, amount) => ({
+            success: true,
+            processedBy: 'js_fallback',
+            accountId
+        })
+    };
+}
+
 const mockProcessTransaction = async (txData) => {
-    return { txId: `tx_${Date.now()}`, status: 'processed', amount: txData.amount };
+    // Delegate processing to the C++ core engine
+    const cppResult = cppEngine.processTransaction(txData.accountId || 'acc_default', txData.amount || 0);
+    return { txId: `tx_${Date.now()}`, status: 'processed', amount: txData.amount, engineResult: cppResult };
 };
 
 router.post('/accounts', async (req, res, next) => {
