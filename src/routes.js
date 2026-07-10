@@ -1,4 +1,5 @@
 const express = require('express');
+const idempotencyMiddleware = require('./idempotency');
 const router = express.Router();
 
 // Mock models for Phase 1
@@ -19,7 +20,8 @@ router.post('/accounts', async (req, res, next) => {
     }
 });
 
-router.post('/transactions', async (req, res, next) => {
+// Apply idempotency middleware to the payment transaction endpoint
+router.post('/transactions', idempotencyMiddleware, async (req, res, next) => {
     try {
         const transaction = await mockProcessTransaction(req.body);
         res.status(200).json({ success: true, data: transaction });
