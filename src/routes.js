@@ -1,5 +1,6 @@
 const express = require('express');
 const idempotencyMiddleware = require('./idempotency');
+const { appendAuditLog } = require('./audit');
 const router = express.Router();
 
 // Mock models for Phase 1
@@ -25,7 +26,12 @@ try {
 const mockProcessTransaction = async (txData) => {
     // Delegate processing to the C++ core engine
     const cppResult = cppEngine.processTransaction(txData.accountId || 'acc_default', txData.amount || 0);
-    return { txId: `tx_${Date.now()}`, status: 'processed', amount: txData.amount, engineResult: cppResult };
+    const transactionRecord = { txId: `tx_${Date.now()}`, status: 'processed', amount: txData.amount, accountId: txData.accountId, engineResult: cppResult };
+    
+    // Append to immutable audit log
+    await appendAuditLog(transactionRecord);
+    
+    return transactionRecord;
 };
 
 router.post('/accounts', async (req, res, next) => {
